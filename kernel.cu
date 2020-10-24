@@ -152,18 +152,11 @@ int main()
 
     thrust::device_vector<double> inner_matrix1(matrix1, matrix1 + n * m);
     thrust::device_vector<double> inner_matrix2(matrix2_T, matrix2_T + m * r);
-    thrust::device_vector<double> inner_result(result, result + n * r);
-
-    thrust::fill(inner_result.begin(), inner_result.end(), 0);
-    cudaDeviceSynchronize();
 
     for (int j = 0; j < n; ++j) {
         for (int i = 0; i < r; ++i)
-            inner_result[j * n + i] = thrust::inner_product(inner_matrix1.begin() + j * m, inner_matrix1.begin() + j * m + m, inner_matrix2.begin() + i * m, 0.0f);
+			result[j * n + i] = thrust::inner_product(inner_matrix1.begin() + j * m, inner_matrix1.begin() + j * m + m, inner_matrix2.begin() + i * m, 0.0f);            
     }
-
-    for (int i = 0; i < n * r; ++i)
-        result[i] = inner_result[i];
 
     std::cout << std::endl << "\tresults" << std::endl;
     printMatrix(n, r, result);
@@ -179,10 +172,7 @@ int main()
 
     thrust::device_vector<double> transform_matrix1(matrix1, matrix1 + n * m);
     thrust::device_vector<double> transform_matrix2(matrix2_T, matrix2_T + m * r);
-    thrust::device_vector<double> transform_result(result, result + n * r);
-
-    thrust::fill(inner_result.begin(), inner_result.end(), 0);
-    cudaDeviceSynchronize();
+    thrust::device_vector<double> transform_result(n * r, 0);
 
     thrust::transform(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(n * r), transform_result.begin(), dp<double>(thrust::raw_pointer_cast(transform_matrix1.data()), thrust::raw_pointer_cast(transform_matrix2.data()), m, n, r));
     cudaDeviceSynchronize();
