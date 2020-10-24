@@ -177,8 +177,7 @@ int main()
     thrust::transform(thrust::counting_iterator<int>(0), thrust::counting_iterator<int>(n * r), transform_result.begin(), dp<double>(thrust::raw_pointer_cast(transform_matrix1.data()), thrust::raw_pointer_cast(transform_matrix2.data()), m, n, r));
     cudaDeviceSynchronize();
 
-    for (int i = 0; i < n * r; ++i)
-        result[i] = transform_result[i];
+    thrust::copy(transform_result.begin(), transform_result.end(), result);
 
     std::cout << std::endl << "\tresults" << std::endl;
     printMatrix(n, r, result);
