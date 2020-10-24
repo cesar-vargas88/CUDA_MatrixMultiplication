@@ -1,0 +1,1 @@
+C:\Users\varga\source\repos\CUDA_MatrixMultiplication\x64\Release\CUDA_MatrixMultiplication.exe

@@ -1,0 +1,2 @@
+C:\Users\varga\source\repos\CUDA_MatrixMultiplication\x64\Debug\CUDA_MatrixMultiplication.exe
+C:\Users\varga\source\repos\CUDA_MatrixMultiplication\x64\Debug\CUDA_MatrixMultiplication.pdb
