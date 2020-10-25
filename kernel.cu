@@ -1,8 +1,11 @@
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+
 #include <thrust/device_vector.h>
 #include <thrust/transform.h>
 #include <thrust/inner_product.h>
+
+
+#include <cuda_runtime.h>
+#include "cublas_v2.h"
 
 #include <ctime>
 #include <iostream>
@@ -58,31 +61,12 @@ struct dp
     }
 };
 
-#define BLOCK_SIZE 16
-
-__global__ void gpu_matrix_multiplication(double* a, double* b, double* c, const int m, const int n, const int k)
-{
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-    int sum = 0;
-
-    if (col < k && row < m)
-    {
-        for (int i = 0; i < n; i++)
-        {
-            sum += a[row * n + i] * b[i * k + col];
-        }
-
-        c[row * k + col] = sum;
-    }
-}
-
 int main()
 {
     clock_t begin_time = clock();
 
     const int n = 2;
-    const int m = 3;
+    const int m = 4;
     const int r = 2;
 
     double matrix1[n * m];
@@ -141,7 +125,7 @@ int main()
     std::cout << std::endl << "\tresults" << std::endl;
     printMatrix(n, r, result);
 
-    std::cout << clock() << " , CPU Nested loop transpose, " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
+    std::cout << clock() << " , CPU Nested loop transpose , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
 
     ////////////////////////////////////////
     ///     GPU thrust::inner_product     //
@@ -185,46 +169,53 @@ int main()
     std::cout << clock() << " , GPU thrust::transform , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
 
     //////////////////////////////
-    ///     GPU CUDA kernel     //
+    ///     GPU CUDA CUBLAS     //
     //////////////////////////////
-    /*
+
     begin_time = clock();
-    std::cout << std::endl << begin_time << " , GPU CUDA kernel" << std::endl;
+    std::cout << std::endl << begin_time << " , GPU CUDA CUBLAS" << std::endl;
 
-    cudaError_t cudaStatus;
+    // Allocate device memory
+    double* d_matrix1;
+    double* d_matrix2;
+    double *d_result;
+    if (cudaMalloc(&d_matrix1, sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_matrix2, sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_result , sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
 
-    double* dev_matrix1     = 0;
-    double* dev_matrix2_T   = 0;
-    double* dev_result      = 0;
+    if (cudaMemcpy(d_matrix1, matrix1, n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    if (cudaMemcpy(d_matrix2, matrix2, m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
 
-    if (cudaMalloc((void**)dev_matrix1      , sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc((void**)dev_matrix2_T    , sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc((void**)dev_result       , sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    // cuBLAS handle
+    cublasHandle_t handle;
 
-    if (cudaMemcpy(dev_matrix1  , matrix1   , n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
-    if (cudaMemcpy(dev_matrix2_T, matrix2_T , m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
+        std::cout << "CUBLAS initialization failed" << std::endl;
+        return EXIT_FAILURE;
+    }
 
-    unsigned int grid_rows = (m + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    unsigned int grid_cols = (r + BLOCK_SIZE - 1) / BLOCK_SIZE;
-    dim3 dimGrid(grid_cols, grid_rows);
-    dim3 dimBlock(BLOCK_SIZE, BLOCK_SIZE);
+    // Scalaing factors
+    double alpha = 1.0;
+    double beta = 0.0;
 
-    //gpu_matrix_multiplication <<< dimGrid, dimBlock >>> (dev_matrix1, dev_matrix2_T, dev_result, m, n, r);
-
-    cudaMemcpy(result, dev_result, sizeof(double) * n * r, cudaMemcpyDeviceToHost);
-    cudaThreadSynchronize();
-
-    cudaFree(dev_matrix1);
-    cudaFree(dev_matrix2_T);
-    cudaFree(dev_result);
-
-    for (int i = 0; i < n * r; ++i)
-        result[i] = transform_result[i];
+    // Calculate: c = (alpha*a) * b + (beta*c)
+    // nxr = nxm * mxr
+    // Signature: handle, operation, operation, n, r, m, alpha, A, lda, B, ldb,
+    // beta, C, ldc
+    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, r, m, &alpha, d_matrix1, n, d_matrix2, m, &beta, d_result, r);
+    
+    // Copy back the three matrices
+    cudaMemcpy(result, d_result, sizeof(double) * n * r, cudaMemcpyDeviceToHost);
+    
+    // Free our memory
+    cudaFree(d_matrix1);
+    cudaFree(d_matrix2);
+    cudaFree(d_result);
 
     std::cout << std::endl << "\tresults" << std::endl;
     printMatrix(n, r, result);
 
-    std::cout << clock() << " , GPU CUDA kernel , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
-    */
+    std::cout << clock() << " , CUDA CUBLAS , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
+    
     return 0;
 }

@@ -115,6 +115,8 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\crt\math_functi
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\crt\math_functions.hpp
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\crt\sm_70_rt.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\crt\sm_80_rt.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cublas_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cublas_v2.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\..\block\block_discontinuity.cuh
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\..\block\block_radix_rank.cuh
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\..\block\block_reduce.cuh
@@ -176,7 +178,12 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\warp\specia
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\warp\specializations\warp_reduce_smem.cuh
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\warp\specializations\warp_scan_shfl.cuh
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\warp\specializations\warp_scan_smem.cuh
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuComplex.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_bf16.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_bf16.hpp
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_device_runtime_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_fp16.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_fp16.hpp
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_occupancy.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_runtime.h
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_runtime_api.h
