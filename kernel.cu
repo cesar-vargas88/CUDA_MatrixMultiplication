@@ -66,7 +66,7 @@ int main()
     clock_t begin_time = clock();
 
     const int n = 2;
-    const int m = 4;
+    const int m = 2;
     const int r = 2;
 
     double matrix1[n * m];
@@ -216,6 +216,47 @@ int main()
     printMatrix(n, r, result);
 
     std::cout << clock() << " , CUDA CUBLAS , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
-    
+
+    ///////////////////////////////////////
+    ///     GPU CUDA CUBLAS transpose    //
+    ///////////////////////////////////////
+
+    begin_time = clock();
+    std::cout << std::endl << begin_time << " , GPU CUDA CUBLAS transpose" << std::endl;
+
+    double* d_matrix2_T;
+
+    // Allocate device memory
+    if (cudaMalloc(&d_matrix1, sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_matrix2, sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_matrix2_T, sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_result, sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+
+    if (cudaMemcpy(d_matrix1, matrix1, n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    if (cudaMemcpy(d_matrix2, matrix2_T, m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+
+    // Tranpose d_matrix2
+    cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, m, n, &alpha, d_matrix2, n, &beta, d_matrix2, m, d_matrix2_T, m);
+
+    // Calculate: c = (alpha*a) * b + (beta*c)
+    // nxr = nxm * mxr
+    // Signature: handle, operation, operation, n, r, m, alpha, A, lda, B, ldb,
+    // beta, C, ldc
+    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, r, m, &alpha, d_matrix1, n, d_matrix2_T, m, &beta, d_result, r);
+
+    // Copy back the three matrices
+    cudaMemcpy(result, d_result, sizeof(double) * n * r, cudaMemcpyDeviceToHost);
+
+    // Free our memory
+    cudaFree(d_matrix1);
+    cudaFree(d_matrix2);
+    cudaFree(d_matrix2_T);
+    cudaFree(d_result);
+
+    std::cout << std::endl << "\tresults" << std::endl;
+    printMatrix(n, r, result);
+
+    std::cout << clock() << " , CUDA CUBLAS ranspose , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
+
     return 0;
 }

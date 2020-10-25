@@ -79,7 +79,7 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\../gr
           [
               OffsetT=__int64
           ]
-  C:\Users\varga\AppData\Local\Temp\tmpxft_00003f48_00000000-7_kernel.cudafe1.stub.c(197): note: see reference to class template instantiation 'cub::GridEvenShare<__int64>' being compiled
+  C:\Users\varga\AppData\Local\Temp\tmpxft_00006c50_00000000-7_kernel.cudafe1.stub.c(197): note: see reference to class template instantiation 'cub::GridEvenShare<__int64>' being compiled
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\../grid/grid_even_share.cuh(135): warning C4244: '=': conversion from 'OffsetT' to 'int', possible loss of data
           with
           [
