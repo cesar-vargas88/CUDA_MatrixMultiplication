@@ -66,7 +66,7 @@ int main()
     clock_t begin_time = clock();
 
     const int n = 2;
-    const int m = 2;
+    const int m = 5;
     const int r = 2;
 
     double matrix1[n * m];
@@ -236,7 +236,7 @@ int main()
     if (cudaMemcpy(d_matrix2, matrix2_T, m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
 
     // Tranpose d_matrix2
-    cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, m, n, &alpha, d_matrix2, n, &beta, d_matrix2, m, d_matrix2_T, m);
+    cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha, d_matrix2, m, &beta, d_matrix2, n, d_matrix2_T, n);
 
     // Calculate: c = (alpha*a) * b + (beta*c)
     // nxr = nxm * mxr
