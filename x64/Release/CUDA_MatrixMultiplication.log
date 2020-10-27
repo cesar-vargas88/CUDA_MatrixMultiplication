@@ -51,7 +51,7 @@ C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.1/include\thrust/system/c
               InputIterator1=thrust::detail::normal_iterator<thrust::device_ptr<double>>,
               InputIterator2=thrust::detail::normal_iterator<thrust::device_ptr<double>>
           ]
-  C:/Users/varga/source/repos/CUDA_MatrixMultiplication/kernel.cu(151): note: see reference to function template instantiation 'OutputType thrust::inner_product<Derived,Derived,float>(InputIterator1,InputIterator1,InputIterator2,OutputType)' being compiled
+  C:/Users/varga/source/repos/CUDA_MatrixMultiplication/kernel.cu(248): note: see reference to function template instantiation 'OutputType thrust::inner_product<Derived,Derived,float>(InputIterator1,InputIterator1,InputIterator2,OutputType)' being compiled
           with
           [
               OutputType=float,
@@ -79,7 +79,7 @@ C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\../gr
           [
               OffsetT=__int64
           ]
-  C:\Users\varga\AppData\Local\Temp\tmpxft_00005070_00000000-7_kernel.cudafe1.stub.c(197): note: see reference to class template instantiation 'cub::GridEvenShare<__int64>' being compiled
+  C:\Users\varga\AppData\Local\Temp\tmpxft_00005d28_00000000-7_kernel.cudafe1.stub.c(214): note: see reference to class template instantiation 'cub::GridEvenShare<__int64>' being compiled
 C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cub\agent\../grid/grid_even_share.cuh(135): warning C4244: '=': conversion from 'OffsetT' to 'int', possible loss of data
           with
           [

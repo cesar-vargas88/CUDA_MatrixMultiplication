@@ -3,7 +3,6 @@
 #include <thrust/transform.h>
 #include <thrust/inner_product.h>
 
-
 #include <cuda_runtime.h>
 #include "cublas_v2.h"
 
@@ -61,6 +60,106 @@ struct dp
     }
 };
 
+void Transpose(double* src, double* dst, unsigned n, unsigned m) {
+
+    // Allocate device memory
+    double* d_src;
+    double* d_dst;
+
+    // Allocate device memory
+    if (cudaMalloc(&d_src, sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_dst, sizeof(double) * m * n) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+
+    if (cudaMemcpy(d_src, src, m * n * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    //cudaDeviceSynchronize();
+
+    // cuBLAS handle
+    cublasHandle_t handle;
+
+    if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        std::cout << "CUBLAS initialization failed" << std::endl;
+
+    // Scalaing factors
+    double alpha = 1.0;
+    double beta = 0.0;
+
+    // Tranpose d_matrix2
+    cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha, d_src, m, &beta, d_src, n, d_dst, n);
+    //cudaDeviceSynchronize();
+
+    // Copy back the three matrices
+    cudaMemcpy(dst, d_dst, sizeof(double) * m * n, cudaMemcpyDeviceToHost);
+    //cudaDeviceSynchronize();
+
+    // Free our memory
+    cudaFree(d_src);
+    cudaFree(d_dst);
+
+    cublasDestroy(handle);
+}
+
+void MultiplyThrust(double* m1, double* m2, double* result, unsigned m, unsigned n, unsigned r) {
+
+    thrust::device_vector<double> matrix1(m1, m1 + n * m);
+    thrust::device_vector<double> matrix2(m2, m2 + m * r);
+    thrust::device_vector<double> matrix_result(n * r, 0);
+
+    thrust::transform(thrust::counting_iterator<unsigned>(0),
+        thrust::counting_iterator<unsigned>(n * r),
+        matrix_result.begin(),
+        dp<double>(thrust::raw_pointer_cast(matrix1.data()), thrust::raw_pointer_cast(matrix2.data()), m, n, r));
+
+    cudaDeviceSynchronize();
+
+    thrust::copy(matrix_result.begin(), matrix_result.end(), result);
+}
+
+void MultiplyCUBLAS(double* m1, double* m2, double* result, unsigned m, unsigned n, unsigned r) {
+
+    // Allocate device memory
+    double* d_matrix1;
+    double* d_matrix2;
+    double* d_result;
+
+    // Allocate device memory
+    if (cudaMalloc(&d_matrix1, sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_matrix2, sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+    if (cudaMalloc(&d_result, sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
+
+    // Copy host to device memory
+    if (cudaMemcpy(d_matrix1, m1, n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    if (cudaMemcpy(d_matrix2, m2, m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
+    //cudaDeviceSynchronize();
+
+    // cuBLAS handle
+    cublasHandle_t handle;
+
+    if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS)
+        std::cout << "CUBLAS initialization failed" << std::endl;
+
+    // Scalaing factors
+    double alpha = 1.0;
+    double beta = 0.0;
+
+    // Calculate: c = (alpha*a) * b + (beta*c)
+    // nxr = nxm * mxr
+    // Signature: handle, operation, operation, n, r, m, alpha, A, lda, B, ldb,
+    // beta, C, ldc    
+    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, r, m, &alpha, d_matrix2, n, d_matrix1, m, &beta, d_result, r);
+    //cudaDeviceSynchronize();
+
+    // Copy back the three matrices
+    cudaMemcpy(result, d_result, sizeof(double) * n * r, cudaMemcpyDeviceToHost);
+    //cudaDeviceSynchronize();
+
+    // Free our memory
+    cudaFree(d_matrix1);
+    cudaFree(d_matrix2);
+    cudaFree(d_result);
+
+    cublasDestroy(handle);
+}
+
 int main()
 {
     clock_t begin_time = clock();
@@ -78,7 +177,7 @@ int main()
     for (int i = 0; i < m * r; ++i) matrix2[i] = i;
     for (int i = 0; i < n * r; ++i) result[i] = 0;
 
-    transpose(m, r, matrix2, matrix2_T);
+    Transpose(matrix2, matrix2_T, m, r);
 
     std::cout << std::endl << "matrix 1" << std::endl;
     printMatrix(n, m, matrix1);
@@ -86,8 +185,6 @@ int main()
     printMatrix(m, r, matrix2);
     std::cout << std::endl << "matrix 2 transpose" << std::endl;
     printMatrix(n, m, matrix2_T);
-    std::cout << std::endl << "result" << std::endl;
-    printMatrix(n, r, result);
 
     //////////////////////////////
     ///     CPU Nested loop     //
@@ -148,7 +245,7 @@ int main()
 
     for (int j = 0; j < n; ++j) {
         for (int i = 0; i < r; ++i)
-			result[j * n + i] = thrust::inner_product(inner_matrix1.begin() + j * m, inner_matrix1.begin() + j * m + m, inner_matrix2.begin() + i * m, 0.0f);            
+            result[j * n + i] = thrust::inner_product(inner_matrix1.begin() + j * m, inner_matrix1.begin() + j * m + m, inner_matrix2.begin() + i * m, 0.0f);
     }
 
     std::cout << std::endl << "\tresults" << std::endl;
@@ -181,101 +278,10 @@ int main()
     ///     GPU CUDA CUBLAS     //
     //////////////////////////////
 
-    begin_time = clock();
-    std::cout << std::endl << begin_time << " , GPU CUDA CUBLAS" << std::endl;
-
-    // Allocate device memory
-    double* d_matrix1;
-    double* d_matrix2;
-    double *d_result;
-    if (cudaMalloc(&d_matrix1, sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc(&d_matrix2, sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc(&d_result , sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-
-    if (cudaMemcpy(d_matrix1, matrix1, n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
-    if (cudaMemcpy(d_matrix2, matrix2, m * r * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
-
-    // cuBLAS handle
-    cublasHandle_t handle;
-
-    if (cublasCreate(&handle) != CUBLAS_STATUS_SUCCESS) {
-        std::cout << "CUBLAS initialization failed" << std::endl;
-        return EXIT_FAILURE;
-    }
-
-    // Scalaing factors
-    double alpha = 1.0;
-    double beta = 0.0;
-
-    // Calculate: c = (alpha*a) * b + (beta*c)
-    // nxr = nxm * mxr
-    // Signature: handle, operation, operation, n, r, m, alpha, A, lda, B, ldb,
-    // beta, C, ldc
-    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, r, m, &alpha, d_matrix1, n, d_matrix2, m, &beta, d_result, r);
-    
-    // Copy back the three matrices
-    cudaMemcpy(result, d_result, sizeof(double) * n * r, cudaMemcpyDeviceToHost);
-    
-    // Free our memory
-    cudaFree(d_matrix1);
-    cudaFree(d_matrix2);
-    cudaFree(d_result);
+    MultiplyCUBLAS(matrix1, matrix2, result, m, n, r);
 
     std::cout << std::endl << "\tresults" << std::endl;
     printMatrix(n, r, result);
-
-    std::cout << clock() << " , CUDA CUBLAS , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
-
-    ///////////////////////////////////////
-    ///     GPU CUDA CUBLAS transpose    //
-    ///////////////////////////////////////
-
-    begin_time = clock();
-    std::cout << std::endl << begin_time << " , GPU CUDA CUBLAS transpose" << std::endl;
-
-    double* d_matrix2_T;
-
-    // Allocate device memory
-    if (cudaMalloc(&d_matrix1   , sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc(&d_matrix2_T , sizeof(double) * n * m) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc(&d_matrix2   , sizeof(double) * m * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-    if (cudaMalloc(&d_result    , sizeof(double) * n * r) != cudaSuccess) std::cout << "cudaMalloc failed!" << std::endl;
-
-    if (cudaMemcpy(d_matrix1    , matrix1   , n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
-    if (cudaMemcpy(d_matrix2_T  , matrix2_T , n * m * sizeof(double), cudaMemcpyHostToDevice)) std::cout << "cudaMemcpy failed!" << std::endl;
-
-    // Tranpose d_matrix2
-    cublasDgeam(handle, CUBLAS_OP_T, CUBLAS_OP_N, n, m, &alpha, d_matrix2_T, m, &beta, d_matrix2_T, n, d_matrix2, n);
-
-    // Calculate: c = (alpha*a) * b + (beta*c)
-    // nxr = nxm * mxr
-    // Signature: handle, operation, operation, n, r, m, alpha, A, lda, B, ldb,
-    // beta, C, ldc
-    cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, r, m, &alpha, d_matrix1, n, d_matrix2, m, &beta, d_result, r);
-
-    // Copy back the three matrices
-    //cudaMemcpy(matrix1, d_matrix1   , sizeof(double) * n * m, cudaMemcpyDeviceToHost);
-    //cudaMemcpy(matrix2, d_matrix2   , sizeof(double) * n * m, cudaMemcpyDeviceToHost);
-    cudaMemcpy(result, d_result     , sizeof(double) * n * r, cudaMemcpyDeviceToHost);
-
-    // Free our memory
-    cudaFree(d_matrix1);
-    cudaFree(d_matrix2);
-    cudaFree(d_matrix2_T);
-    cudaFree(d_result);
-    
-    cublasDestroy(handle);
-
-    //std::cout << std::endl << "matrix 1" << std::endl;
-    //printMatrix(n, m, matrix1);
-    //std::cout << std::endl << "matrix 2" << std::endl;
-    //printMatrix(m, r, matrix2);
-    std::cout << std::endl << "result" << std::endl;
-    printMatrix(n, r, result);
-    
-    std::cout << clock() << " , CUDA CUBLAS ranspose , " << double(clock() - begin_time) / CLOCKS_PER_SEC << std::endl;
-
-    cublasDestroy(handle);
 
     return 0;
 }
